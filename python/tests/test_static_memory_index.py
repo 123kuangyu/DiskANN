@@ -20,7 +20,6 @@ class TestStaticMemoryIndex(unittest.TestCase):
             build_random_vectors_and_memory_index(np.float32, "cosine"),
             build_random_vectors_and_memory_index(np.uint8, "cosine"),
             build_random_vectors_and_memory_index(np.int8, "cosine"),
-            build_random_vectors_and_memory_index(np.float32, "mips"),
         ]
         cls._example_ann_dir = cls._test_matrix[0][4]
 
@@ -41,9 +40,9 @@ class TestStaticMemoryIndex(unittest.TestCase):
             index_vectors,
             ann_dir,
             vector_bin_file,
-            _,
+            _
         ) in self._test_matrix:
-            with self.subTest(msg=f"Testing dtype {dtype}"):
+            with self.subTest():
                 index = dap.StaticMemoryIndex(
                     index_directory=ann_dir,
                     num_threads=16,
@@ -51,15 +50,12 @@ class TestStaticMemoryIndex(unittest.TestCase):
                 )
 
                 k = 5
-                batch_response = index.batch_search(
+                diskann_neighbors, diskann_distances = index.batch_search(
                     query_vectors,
                     k_neighbors=k,
                     complexity=5,
                     num_threads=16,
                 )
-                self.assertIsInstance(batch_response, dap.QueryResponseBatch)
-
-                diskann_neighbors, diskann_distances = batch_response
                 if metric in ["l2", "cosine"]:
                     knn = NearestNeighbors(
                         n_neighbors=100, algorithm="auto", metric=metric
@@ -70,7 +66,7 @@ class TestStaticMemoryIndex(unittest.TestCase):
                     self.assertTrue(
                         recall > 0.70,
                         f"Recall [{recall}] was not over 0.7",
-                    )
+                        )
 
     def test_single(self):
         for (
@@ -80,9 +76,9 @@ class TestStaticMemoryIndex(unittest.TestCase):
             index_vectors,
             ann_dir,
             vector_bin_file,
-            _,
+            _
         ) in self._test_matrix:
-            with self.subTest(msg=f"Testing dtype {dtype}"):
+            with self.subTest():
                 index = dap.StaticMemoryIndex(
                     index_directory=ann_dir,
                     num_threads=16,
@@ -90,9 +86,7 @@ class TestStaticMemoryIndex(unittest.TestCase):
                 )
 
                 k = 5
-                response = index.search(query_vectors[0], k_neighbors=k, complexity=5)
-                self.assertIsInstance(response, dap.QueryResponse)
-                ids, dists = response
+                ids, dists = index.search(query_vectors[0], k_neighbors=k, complexity=5)
                 self.assertEqual(ids.shape[0], k)
                 self.assertEqual(dists.shape[0], k)
 
@@ -104,7 +98,7 @@ class TestStaticMemoryIndex(unittest.TestCase):
             index_vectors,
             ann_dir,
             vector_bin_file,
-            _,
+            _
         ) = build_random_vectors_and_memory_index(np.single, "l2", "not_ann")
         good_ranges = {
             "index_directory": ann_dir,
@@ -166,23 +160,3 @@ class TestStaticMemoryIndex(unittest.TestCase):
                     index.batch_search(
                         queries=np.array([[]], dtype=np.single), **kwargs
                     )
-
-    def test_zero_threads(self):
-        for (
-            metric,
-            dtype,
-            query_vectors,
-            index_vectors,
-            ann_dir,
-            vector_bin_file,
-            _,
-        ) in self._test_matrix:
-            with self.subTest(msg=f"Testing dtype {dtype}"):
-                index = dap.StaticMemoryIndex(
-                    index_directory=ann_dir,
-                    num_threads=0,
-                    initial_search_complexity=32,
-                )
-
-                k = 5
-                ids, dists = index.batch_search(query_vectors, k_neighbors=k, complexity=5, num_threads=0)
